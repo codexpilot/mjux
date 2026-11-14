@@ -1,6 +1,6 @@
 # MJUX development guideline
 
-**Status:** Proposed development plan.
+**Status:** Historical proposal, superseded by the current [architecture](architecture/README.md) and [working plan](plan/README.md). Its terminology and proposed contract may differ from current decisions.
 
 MJUX (Material JSON UX) is the first implementation of Dataset's JSON-driven
 UI. Build it on Flutter's `material_ui` package so Dataset can start using
