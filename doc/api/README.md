@@ -16,6 +16,7 @@ and runs a complete host app. [Example manifest](../../example/pubspec.yaml)
 | `Surface` | Owns one instance's interaction state. The host calls `dispose()` when finished with it. |
 | `SaveRequested` | Contains an immutable snapshot of the draft values at submission. |
 | `SaveSucceeded` / `SaveFailed` | Report whether the host saved the snapshot. `SaveFailed` takes a message to display. |
+| `JsonCFormBinding` | Maps a row of a jcore `JsonC` to form values and applies a save snapshot to a new `JsonC`. |
 
 Create the definition and surfaces outside `build`. Mount each surface in one
 `SurfaceView(surface: surface)` at a time inside a `MaterialApp` from
@@ -54,6 +55,81 @@ final surface = const Utility().open(
   choice can be cleared to `null`. Clearing text produces an empty string.
 - Required fields reject missing, null, or whitespace-only values. Errors
   appear after a field is touched or an edited form is submitted.
+
+### jcore JSONC mapping
+
+MJUX depends on [jcore](https://github.com/codexpilot/jcore) 2.0.0 for its Dart
+data types and JSONC format. Its Git dependency is pinned in the package manifest.
+`JsonCFormBinding` maps every form key to a distinct column in a full JSONC
+object (one with both schema and data). Declare jcore as a direct dependency
+of an app that imports it. Import jcore to construct or decode a `JsonC`, then
+use the binding to open the form:
+
+```dart
+import 'package:jcore/jcore.dart';
+import 'package:mjux/mjux.dart';
+
+final name = FieldKey();
+final form = FormEditor1(
+  title: 'Plant details',
+  fields: [TextFieldSpec(key: name, label: 'Plant name', isRequired: true)],
+);
+final jsonc = JsonC(
+  jv: 1,
+  jid: 12345,
+  schema: {'name': JDataType.text.id},
+  data: [
+    ['Basil'],
+  ],
+);
+final binding = JsonCFormBinding(
+  form: form,
+  jsonc: jsonc,
+  rowIndex: 0,
+  columns: {name: 'name'},
+);
+final surface = const Utility().open(
+  form,
+  initialValues: binding.initialValues,
+  onSave: (request) async {
+    try {
+      final updated = binding.toJsonC(request);
+      // Persist updated, for example by sending updated.toJson() to the host.
+      return const SaveSucceeded();
+    } on ArgumentError {
+      return const SaveFailed('Check the entered values.');
+    }
+  },
+);
+```
+
+The form edits string values; the binding converts mapped cells according to
+their jcore schema types when loading and saving. It supports boolean, int32,
+int64, datetime, time, text, UUID, TEXT0Z, numeric, and JSONB values. JSONB
+fields are edited as JSON text. JSONC number-format modes determine whether
+numeric and int64 values are represented as strings. Datetime and time use
+jcore's integer storage values, not formatted dates or times. Booleans use
+`true` or `false`. Text and numeric schema length or precision constraints
+are checked when applicable.
+
+The binding snapshots its input. `toJsonC` returns a new snapshot, preserving
+metadata, unbound columns, other rows, and unchanged cells. Each call starts
+from the binding's original snapshot; create a new binding from the latest
+saved JSONC when subsequent saves must include changes made elsewhere. The
+constructor rejects invalid metadata, schema or row shape, a missing row,
+invalid bound values, and missing, duplicate, or unknown column bindings. A save
+must include exactly the bound fields; invalid or unrepresentable edits throw
+`ArgumentError` so the host can report a save failure.
+
+For edited numeric decimals, use a numeric-string `jnf` mode (0, 4, or 5).
+Decimal input is validated by jcore, including its precision and scale rules.
+In numeric modes, edited numeric values must be integers within the exact
+portable range (±9007199254740991). On native Dart, raw INT64 values support
+the full signed 64-bit range; use a BigInt-string mode (0, 3, or 5) when values
+must also be safe for JavaScript. In those modes, jcore uses Dart `BigInt` values for INT64 cells
+and serializes them as strings. Int32, datetime, and time use integer
+representations. Unchanged cells keep their original representation and do not
+undergo an edit conversion.
 
 ### Saving and lifecycle
 

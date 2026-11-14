@@ -88,6 +88,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.20.3"
+  jcore:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: "8f3c3a796504ec5e6f2e96a59015fd4b34ea964c"
+      resolved-ref: "8f3c3a796504ec5e6f2e96a59015fd4b34ea964c"
+      url: "https://github.com/codexpilot/jcore.git"
+    source: git
+    version: "2.0.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -238,5 +247,5 @@ packages:
     source: hosted
     version: "15.4.0"
 sdks:
-  dart: ">=3.13.0 <4.0.0"
+  dart: ">=3.14.0 <4.0.0"
   flutter: ">=3.50.0"

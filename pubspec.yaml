@@ -4,12 +4,16 @@ version: 0.1.0
 publish_to: none
 
 environment:
-  sdk: ^3.13.0
+  sdk: ^3.14.0
   flutter: '>=3.50.0'
 
 dependencies:
   flutter:
     sdk: flutter
+  jcore:
+    git:
+      url: https://github.com/codexpilot/jcore.git
+      ref: 8f3c3a796504ec5e6f2e96a59015fd4b34ea964c
   material_ui: ^1.11.0
 
 dev_dependencies:
