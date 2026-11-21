@@ -73,7 +73,14 @@ class StorageProfilesFixture {
   }
 
   static Future<Map<String, dynamic>> _loadJson(String path) async {
-    final content = await rootBundle.loadString(path);
+    // Try package-prefixed path first (when MJUX is a dependency),
+    // fall back to bare path (when running from MJUX's own example)
+    String content;
+    try {
+      content = await rootBundle.loadString('packages/mjux/$path');
+    } catch (_) {
+      content = await rootBundle.loadString(path);
+    }
     return jsonDecode(content) as Map<String, dynamic>;
   }
 }
