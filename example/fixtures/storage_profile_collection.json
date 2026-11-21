@@ -1,7 +1,7 @@
 {
   "key": "storage_profile_collection",
   "schemaVersion": 1,
-  "uix": 100000,
+  "uix": 10000,
   "title": "Storage Profiles",
   "dataSchemaRef": "storage_profile",
   "fields": [

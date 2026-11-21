@@ -1,7 +1,7 @@
 {
   "key": "storage_profile_inspection",
   "schemaVersion": 1,
-  "uix": 100001,
+  "uix": 20000,
   "title": "Profile Details",
   "dataSchemaRef": "storage_profile",
   "fields": [

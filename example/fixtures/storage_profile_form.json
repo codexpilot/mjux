@@ -1,7 +1,7 @@
 {
   "key": "storage_profile_form",
   "schemaVersion": 1,
-  "uix": 100002,
+  "uix": 30000,
   "title": "Edit Profile",
   "dataSchemaRef": "storage_profile",
   "fields": [
