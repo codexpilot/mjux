@@ -11,7 +11,10 @@ dependencies:
   flutter:
     sdk: flutter
   jcore:
-    path: /Users/Shared/dev/git/jcore/dart
+    git:
+      url: https://github.com/codexpilot/jcore.git
+      ref: main
+      path: dart
   material_ui: ^1.11.0
 
 dev_dependencies:
