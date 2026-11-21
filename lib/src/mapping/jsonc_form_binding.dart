@@ -4,12 +4,14 @@ import 'package:jcore/jcore.dart';
 
 import '../catalog/form_editor_1.dart';
 
-/// Binds the fields of a form to columns in one row of a full jcore JSONC.
+/// Binds form fields to one row of JSONC using JCore's current type catalog.
 ///
 /// The binding snapshots its input. Use [initialValues] when opening a surface,
 /// then pass its save request to [toJsonC]. Unbound columns and other rows are
-/// preserved. Values are displayed as text; datetime and time use the integer
-/// representations defined by jcore, not localized dates or times.
+/// preserved. Schema IDs must be recognized by [DataTypeRegistry]; legacy
+/// Group 3 IDs are rejected. Edited decimals become [Numeric] values when the
+/// JSONC number mode uses strings. Values are displayed as text; datetime and
+/// time use JCore's integer representations, not localized dates or times.
 final class JsonCFormBinding {
   factory JsonCFormBinding({
     required FormEditor1 form,
@@ -27,7 +29,18 @@ final class JsonCFormBinding {
         data == null) {
       throw ArgumentError('A full JSONC with valid metadata is required.');
     }
-    final schemaErrors = JConverter.validateSchema(schema);
+    final schemaErrors = <String>[];
+    if (schema.isEmpty) schemaErrors.add('Schema cannot be empty');
+    for (final entry in schema.entries) {
+      if (entry.key.isEmpty) {
+        schemaErrors.add('Column name cannot be empty');
+      }
+      if (!DataTypeRegistry.isValid(entry.value)) {
+        schemaErrors.add(
+          'Invalid jcore data type for column "${entry.key}": ${entry.value}',
+        );
+      }
+    }
     if (schemaErrors.isNotEmpty) throw ArgumentError(schemaErrors.join('; '));
     if (data.any((row) => row.length != schema.length)) {
       throw ArgumentError('Every JSONC row must match the schema width.');
@@ -131,21 +144,19 @@ void _validateChoice(FieldSpec field, String? value) {
 
 String? _displayValue(dynamic value, int type, JsonC jsonc) {
   if (value == null) return null;
-  if (isValidTextType(type) ||
-      type == JDataType.uuid.id ||
-      type == JDataType.text0z.id) {
+  if (_isTextType(type)) {
     if (value is! String) {
       throw ArgumentError('Expected a string for type $type.');
     }
     _checkTextLength(value, type);
     return value;
   }
-  if (type == JDataType.boolean.id) {
+  if (type == DataType.boolean.id) {
     if (value is! bool) throw ArgumentError('Expected a boolean.');
     return value.toString();
   }
   if (_isInteger(type)) {
-    final stringMode = type == JDataType.int64.id && jsonc.useBigIntStrings;
+    final stringMode = type == DataType.int64.id && jsonc.useBigIntStrings;
     if (stringMode ? value is! BigInt : value is! int) {
       throw ArgumentError('Unexpected integer representation for type $type.');
     }
@@ -153,8 +164,10 @@ String? _displayValue(dynamic value, int type, JsonC jsonc) {
     _parseInteger(text, type, stringMode);
     return text;
   }
-  if (isValidNumericType(type)) {
-    if (jsonc.useNumericStrings ? value is! String : value is! num) {
+  if (DataTypeRegistry.isValidNumeric(type)) {
+    if (jsonc.useNumericStrings
+        ? value is! String && value is! Numeric
+        : value is! num && value is! Numeric) {
       throw ArgumentError('Unexpected numeric representation.');
     }
     final text = value.toString();
@@ -164,31 +177,38 @@ String? _displayValue(dynamic value, int type, JsonC jsonc) {
     }
     return text;
   }
-  if (type == JDataType.jsonb.id) return jsonEncode(value);
+  if (type == DataType.jsonb.id) return jsonEncode(value);
   throw ArgumentError('Unsupported jcore data type $type.');
 }
 
 dynamic _parseValue(String? value, int type, JsonC jsonc) {
   if (value == null) return null;
-  if (isValidTextType(type) ||
-      type == JDataType.uuid.id ||
-      type == JDataType.text0z.id) {
+  if (_isTextType(type)) {
     _checkTextLength(value, type);
     return value;
   }
-  if (type == JDataType.boolean.id) {
+  if (type == DataType.boolean.id) {
     if (value == 'true') return true;
     if (value == 'false') return false;
     throw ArgumentError('Boolean must be true or false.');
   }
   if (_isInteger(type)) {
-    final stringMode = type == JDataType.int64.id && jsonc.useBigIntStrings;
+    final stringMode = type == DataType.int64.id && jsonc.useBigIntStrings;
     final integer = _parseInteger(value, type, stringMode);
     return stringMode ? integer : integer.toInt();
   }
-  if (isValidNumericType(type)) {
+  if (DataTypeRegistry.isValidNumeric(type)) {
     _checkDecimal(value, type);
-    if (jsonc.useNumericStrings) return value;
+    if (jsonc.useNumericStrings) {
+      final decoded = DataTypeRegistry.decodeNumeric(type)!;
+      final decimal = _expandDecimal(value);
+      final scale = decoded.scale ?? _decimalScale(decimal);
+      try {
+        return Numeric.fromString(decimal, scale);
+      } on FormatException catch (error) {
+        throw ArgumentError('Invalid exact decimal: ${error.message}');
+      }
+    }
     // Only safe integers have an exact, portable representation in raw mode.
     if (!RegExp(r'^[+-]?\d+$').hasMatch(value)) {
       throw ArgumentError('Edited decimals require a numeric-string jnf mode.');
@@ -201,7 +221,7 @@ dynamic _parseValue(String? value, int type, JsonC jsonc) {
     }
     return integer.toInt();
   }
-  if (type == JDataType.jsonb.id) {
+  if (type == DataType.jsonb.id) {
     try {
       return _freezeJson(jsonDecode(value));
     } on FormatException catch (error) {
@@ -212,22 +232,25 @@ dynamic _parseValue(String? value, int type, JsonC jsonc) {
 }
 
 bool _isInteger(int type) =>
-    type == JDataType.int32.id ||
-    type == JDataType.int64.id ||
-    type == JDataType.datetime.id ||
-    type == JDataType.time.id;
+    type == DataType.smallint.id ||
+    type == DataType.int32.id ||
+    type == DataType.int64.id ||
+    type == DataType.datetime.id ||
+    type == DataType.time.id;
 
 BigInt _parseInteger(String value, int type, bool stringMode) {
   if (!RegExp(r'^[+-]?\d+$').hasMatch(value)) {
     throw ArgumentError('Expected an integer.');
   }
   final parsed = BigInt.parse(value);
-  final min = type == JDataType.int32.id
-      ? BigInt.from(-2147483648)
-      : -(BigInt.one << 63);
-  final max = type == JDataType.int32.id
-      ? BigInt.from(2147483647)
-      : (BigInt.one << 63) - BigInt.one;
+  final bits = type == DataType.smallint.id
+      ? 16
+      : type == DataType.int32.id
+      ? 32
+      : 64;
+  final limit = BigInt.one << (bits - 1);
+  final min = -limit;
+  final max = limit - BigInt.one;
   if (parsed < min || parsed > max) {
     throw ArgumentError('Integer is out of range.');
   }
@@ -240,7 +263,7 @@ BigInt _parseInteger(String value, int type, bool stringMode) {
 }
 
 void _checkTextLength(String value, int type) {
-  final limit = decodeTextType(type);
+  final limit = DataTypeRegistry.decodeText(type);
   if (limit != null && value.length > limit) {
     throw ArgumentError('Text exceeds length $limit.');
   }
@@ -251,10 +274,49 @@ void _checkDecimal(Object value, int type) {
   if (error != null) throw ArgumentError(error);
 }
 
+bool _isTextType(int type) =>
+    DataTypeRegistry.isValidText(type) || type == DataType.uuid.id;
+
+int _decimalScale(String value) {
+  final point = value.indexOf('.');
+  return point < 0 ? 0 : value.length - point - 1;
+}
+
+String _expandDecimal(String value) {
+  final input = value.trim();
+  final match = RegExp(r'^([+-]?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$')
+      .firstMatch(input);
+  if (match == null) throw ArgumentError('Expected an exact decimal value.');
+
+  final whole = match.group(2)!;
+  final fraction = match.group(3) ?? '';
+  final digits = '$whole$fraction';
+  if (digits.isEmpty) throw ArgumentError('Expected an exact decimal value.');
+
+  final exponentText = match.group(4);
+  final exponent = exponentText == null ? 0 : int.tryParse(exponentText);
+  if (exponent == null || exponent.abs() > 10000) {
+    throw ArgumentError('Decimal exponent is out of range.');
+  }
+
+  final decimalPosition = whole.length + exponent;
+  final String expanded;
+  if (decimalPosition <= 0) {
+    expanded = '0.${'0' * -decimalPosition}$digits';
+  } else if (decimalPosition >= digits.length) {
+    expanded = '$digits${'0' * (decimalPosition - digits.length)}';
+  } else {
+    expanded =
+        '${digits.substring(0, decimalPosition)}.'
+        '${digits.substring(decimalPosition)}';
+  }
+  return '${match.group(1)}$expanded';
+}
+
 List<dynamic> _freezeRow(List<dynamic> row, List<int> types) {
   return List<dynamic>.unmodifiable([
     for (var i = 0; i < row.length; i++)
-      if (row[i] is BigInt && types[i] == JDataType.int64.id)
+      if (row[i] is BigInt && types[i] == DataType.int64.id)
         row[i]
       else
         _freezeJson(row[i]),
@@ -262,7 +324,11 @@ List<dynamic> _freezeRow(List<dynamic> row, List<int> types) {
 }
 
 dynamic _freezeJson(dynamic value) {
-  if (value == null || value is String || value is bool || value is int) {
+  if (value == null ||
+      value is String ||
+      value is bool ||
+      value is int ||
+      value is Numeric) {
     return value;
   }
   if (value is double && value.isFinite) return value;

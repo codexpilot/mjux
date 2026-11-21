@@ -1,0 +1,42 @@
+{
+  "key": "storage_profile_form",
+  "schemaVersion": 1,
+  "uix": 100002,
+  "title": "Edit Profile",
+  "dataSchemaRef": "storage_profile",
+  "fields": [
+    {
+      "key": "i",
+      "label": "ID",
+      "control": "display",
+      "readOnly": true
+    },
+    {
+      "key": "name",
+      "label": "Name",
+      "control": "text",
+      "readOnly": false
+    },
+    {
+      "key": "ttx",
+      "label": "Type",
+      "control": "select",
+      "readOnly": false
+    }
+  ],
+  "commands": [
+    {
+      "command": "save",
+      "label": "Save",
+      "operation": 2001
+    },
+    {
+      "command": "cancel",
+      "label": "Cancel"
+    },
+    {
+      "command": "back",
+      "label": "Back"
+    }
+  ]
+}

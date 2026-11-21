@@ -58,12 +58,14 @@ final surface = const Utility().open(
 
 ### jcore JSONC mapping
 
-MJUX depends on [jcore](https://github.com/codexpilot/jcore) 2.0.0 for its Dart
-data types and JSONC format. Its Git dependency is pinned in the package manifest.
-`JsonCFormBinding` maps every form key to a distinct column in a full JSONC
-object (one with both schema and data). Declare jcore as a direct dependency
-of an app that imports it. Import jcore to construct or decode a `JsonC`, then
-use the binding to open the form:
+MJUX depends on [jcore](https://github.com/codexpilot/jcore) 3.0.9 for its Dart
+data type registry, exact numeric values, and JSONC format. The package remains
+`jcore`; its repository package root is `dart`. `JsonCFormBinding` accepts the
+current `DataType` and `DataTypeRegistry` catalog and maps every form key to a
+distinct column in a full JSONC object (one with both schema and data). Legacy
+Group 3 type IDs are not accepted by this binding. Declare jcore as a direct
+dependency of an app that imports it. Import jcore to construct or decode a
+`JsonC`, then use the binding to open the form:
 
 ```dart
 import 'package:jcore/jcore.dart';
@@ -77,7 +79,7 @@ final form = FormEditor1(
 final jsonc = JsonC(
   jv: 1,
   jid: 12345,
-  schema: {'name': JDataType.text.id},
+  schema: {'name': DataType.text.id},
   data: [
     ['Basil'],
   ],
@@ -104,13 +106,13 @@ final surface = const Utility().open(
 ```
 
 The form edits string values; the binding converts mapped cells according to
-their jcore schema types when loading and saving. It supports boolean, int32,
-int64, datetime, time, text, UUID, TEXT0Z, numeric, and JSONB values. JSONB
-fields are edited as JSON text. JSONC number-format modes determine whether
-numeric and int64 values are represented as strings. Datetime and time use
-jcore's integer storage values, not formatted dates or times. Booleans use
-`true` or `false`. Text and numeric schema length or precision constraints
-are checked when applicable.
+their jcore schema types when loading and saving. It supports boolean,
+SMALLINT, INT32, INT64, datetime, time, text, UUID, TEXT0Z, NUMERIC, and JSONB
+values. JSONB fields are edited as JSON text. JSONC number-format modes
+determine whether numeric and int64 values are represented as strings.
+Datetime and time use jcore's integer storage values, not formatted dates or
+times. Booleans use `true` or `false`. Text and numeric schema length or
+precision constraints are checked when applicable.
 
 The binding snapshots its input. `toJsonC` returns a new snapshot, preserving
 metadata, unbound columns, other rows, and unchanged cells. Each call starts
@@ -121,13 +123,13 @@ invalid bound values, and missing, duplicate, or unknown column bindings. A save
 must include exactly the bound fields; invalid or unrepresentable edits throw
 `ArgumentError` so the host can report a save failure.
 
-For edited numeric decimals, use a numeric-string `jnf` mode (0, 4, or 5).
-Decimal input is validated by jcore, including its precision and scale rules.
-In numeric modes, edited numeric values must be integers within the exact
-portable range (±9007199254740991). On native Dart, raw INT64 values support
-the full signed 64-bit range; use a BigInt-string mode (0, 3, or 5) when values
-must also be safe for JavaScript. In those modes, jcore uses Dart `BigInt` values for INT64 cells
-and serializes them as strings. Int32, datetime, and time use integer
+For edited decimal values, use a numeric-string `jnf` mode (0, 4, or 5). The
+binding validates precision and scale with jcore and stores an edited exact
+value as `Numeric`; JSONC emits it as a decimal string in these modes. In
+raw-number modes (1, 2, or 3), edited NUMERIC values must be integers within
+the exact portable range (±9007199254740991). INT64 uses Dart `int` in
+number modes and `BigInt` in string modes (0, 3, or 5); string modes serialize
+INT64 cells as decimal strings. SMALLINT, INT32, datetime, and time use integer
 representations. Unchanged cells keep their original representation and do not
 undergo an edit conversion.
 

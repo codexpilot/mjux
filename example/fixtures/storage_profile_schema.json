@@ -1,0 +1,26 @@
+{
+  "key": "storage_profile",
+  "idField": "i",
+  "fields": {
+    "i": {
+      "type": "integer",
+      "label": "ID",
+      "readOnly": true
+    },
+    "name": {
+      "type": "text",
+      "label": "Name",
+      "required": true
+    },
+    "ttx": {
+      "type": "integer",
+      "label": "Type",
+      "required": true,
+      "choices": [
+        {"value": 1, "label": "Standard"},
+        {"value": 2, "label": "Archive"},
+        {"value": 3, "label": "Backup"}
+      ]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "key": "storage_profiles_workspace",
+  "schemaVersion": 1,
+  "uix": 1,
+  "title": "Storage Profiles",
+  "destinations": [
+    {
+      "id": "profiles",
+      "label": "Profiles",
+      "viewKey": "storage_profiles_view"
+    },
+    {
+      "id": "settings",
+      "label": "Settings",
+      "viewKey": "storage_profiles_view"
+    }
+  ],
+  "primaryDestinations": ["profiles"],
+  "initialDestination": "profiles"
+}

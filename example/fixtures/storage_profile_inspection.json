@@ -1,0 +1,37 @@
+{
+  "key": "storage_profile_inspection",
+  "schemaVersion": 1,
+  "uix": 100001,
+  "title": "Profile Details",
+  "dataSchemaRef": "storage_profile",
+  "fields": [
+    {
+      "key": "i",
+      "label": "ID",
+      "control": "display",
+      "readOnly": true
+    },
+    {
+      "key": "name",
+      "label": "Name",
+      "control": "display",
+      "readOnly": true
+    },
+    {
+      "key": "ttx",
+      "label": "Type",
+      "control": "display",
+      "readOnly": true
+    }
+  ],
+  "commands": [
+    {
+      "command": "edit",
+      "label": "Edit"
+    },
+    {
+      "command": "back",
+      "label": "Back"
+    }
+  ]
+}

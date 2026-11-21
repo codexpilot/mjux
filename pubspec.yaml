@@ -1,6 +1,6 @@
 name: mjux
-description: A Flutter package for reusable catalog interfaces with independent surface state.
-version: 0.1.0
+description: Material app chrome and JSON-driven data workspaces for Flutter with JCore JUX integration.
+version: 0.2.0
 publish_to: none
 
 environment:
@@ -11,9 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   jcore:
-    git:
-      url: https://github.com/codexpilot/jcore.git
-      ref: 8f3c3a796504ec5e6f2e96a59015fd4b34ea964c
+    path: /Users/Shared/dev/git/jcore/dart
   material_ui: ^1.11.0
 
 dev_dependencies:

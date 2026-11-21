@@ -1,12 +1,16 @@
 # AIX Numeric Integration for MJUX
 
 **Date:** 2026-01-23  
-**Status:** Architecture decision  
+**Status:** Historical proposal, superseded by JCore `jdata`
 **Relates to:** [Core backlog priority #3](material-ui-component-gaps.md#prioritized-core-component-backlog)
 
-## Overview
+## Historical overview
 
-MJUX leverages AIX's high-performance `Numeric` class for exact decimal arithmetic. This provides financial and clinical precision without floating-point loss, critical for ERP, POS, EMR, and EHR workflows.
+This document records the original AIX-owned `Numeric` proposal. `Numeric` now
+lives in JCore and MJUX consumes it through `package:jcore/jcore.dart`. The
+architecture below is a design sketch, not the current MJUX API contract.
+
+MJUX originally planned to leverage AIX's high-performance `Numeric` class for exact decimal arithmetic. This provides financial and clinical precision without floating-point loss, critical for ERP, POS, EMR, and EHR workflows.
 
 ## AIX Numeric Class Capabilities
 

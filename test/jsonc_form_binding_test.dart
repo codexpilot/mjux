@@ -15,7 +15,7 @@ void main() {
         jv: 42,
         jid: 7,
         jnf: 3,
-        schema: {'id': JDataType.int64.id, 'name': JDataType.text.id},
+        schema: {'id': DataType.int64.id, 'name': DataType.text.id},
         data: [
           [1, 'Alice'],
           [2, 'Bob'],
@@ -65,7 +65,7 @@ void main() {
       final valid = JsonC(
         jv: 1,
         jid: 2,
-        schema: {'name': JDataType.text.id},
+        schema: {'name': DataType.text.id},
         data: [
           ['Alice'],
         ],
@@ -87,7 +87,7 @@ void main() {
       );
       expect(
         () => bind(
-          JsonC(jv: 1, jid: 2, schema: {'name': JDataType.text.id}),
+          JsonC(jv: 1, jid: 2, schema: {'name': DataType.text.id}),
           0,
           {name: 'name'},
         ),
@@ -114,7 +114,7 @@ void main() {
       );
       expect(
         () => bind(
-          JsonC(jv: 1, jid: 2, schema: {'name': JDataType.text.id}, data: [[]]),
+          JsonC(jv: 1, jid: 2, schema: {'name': DataType.text.id}, data: [[]]),
           0,
           {name: 'name'},
         ),
@@ -141,11 +141,11 @@ void main() {
           jv: 1,
           jid: 2,
           schema: {
-            'text': encodeTextType(length: 5),
-            'enabled': JDataType.boolean.id,
-            'count': JDataType.int32.id,
-            'when': JDataType.datetime.id,
-            'details': JDataType.jsonb.id,
+            'text': DataTypeRegistry.encodeText(length: 5),
+            'enabled': DataType.boolean.id,
+            'count': DataType.int32.id,
+            'when': DataType.datetime.id,
+            'details': DataType.jsonb.id,
           },
           data: [
             [
@@ -210,9 +210,9 @@ void main() {
         jv: 1,
         jid: 2,
         schema: {
-          'enabled': JDataType.boolean.id,
-          'count': JDataType.int32.id,
-          'details': JDataType.jsonb.id,
+          'enabled': DataType.boolean.id,
+          'count': DataType.int32.id,
+          'details': DataType.jsonb.id,
         },
         data: [
           [
@@ -263,7 +263,7 @@ void main() {
           jv: 1,
           jid: 2,
           jnf: 4,
-          schema: {'amount': JDataType.numeric.id},
+          schema: {'amount': DataType.numeric.id},
           data: [
             ['12345678901234567890.123456789'],
           ],
@@ -276,7 +276,7 @@ void main() {
         SaveRequested({amount: '999999999999999999.00001'}),
       );
       expect(result.data, [
-        ['999999999999999999.00001'],
+        [Numeric.fromString('999999999999999999.00001', 5)],
       ]);
       expect(
         () => binding.toJsonC(SaveRequested({amount: 'not a number'})),
@@ -299,7 +299,7 @@ void main() {
         jsonc: JsonC(
           jv: 1,
           jid: 2,
-          schema: {'details': JDataType.jsonb.id},
+          schema: {'details': DataType.jsonb.id},
           data: [
             [sourceDetails],
           ],
@@ -332,7 +332,7 @@ void main() {
           jv: 1,
           jid: 2,
           jnf: 3,
-          schema: {'id': JDataType.int64.id},
+          schema: {'id': DataType.int64.id},
           data: [
             ['0'],
           ],
@@ -364,7 +364,7 @@ void main() {
           jv: 1,
           jid: 2,
           jnf: 2,
-          schema: {'id': JDataType.int64.id},
+          schema: {'id': DataType.int64.id},
           data: [
             [0],
           ],
@@ -390,7 +390,9 @@ void main() {
           jv: 1,
           jid: 2,
           jnf: 4,
-          schema: {'amount': encodeNumericType(precision: 5, scale: 2)},
+          schema: {
+            'amount': DataTypeRegistry.encodeNumeric(precision: 5, scale: 2),
+          },
           data: [
             ['0.00'],
           ],
@@ -399,8 +401,9 @@ void main() {
         columns: {amount: 'amount'},
       );
       for (final valid in ['999.99', '-0.01', '00012.30', '1.2300', '1e2']) {
+        final decimal = valid == '1e2' ? '100' : valid;
         expect(binding.toJsonC(SaveRequested({amount: valid})).data, [
-          [valid],
+          [Numeric.fromString(decimal, 2)],
         ]);
       }
       for (final invalid in ['1000.00', '1.234', 'not-a-number']) {
@@ -419,9 +422,9 @@ void main() {
         'jid': 2,
         'jnf': 5,
         'schema': {
-          'id': JDataType.int64.id,
-          'name': JDataType.text.id,
-          'other': JDataType.int64.id,
+          'id': DataType.int64.id,
+          'name': DataType.text.id,
+          'other': DataType.int64.id,
         },
         'data': [
           ['9223372036854775807', 'Original', '-9223372036854775808'],
@@ -465,7 +468,7 @@ void main() {
           jv: 1,
           jid: 2,
           jnf: mode,
-          schema: {'id': JDataType.int64.id, 'other': JDataType.int64.id},
+          schema: {'id': DataType.int64.id, 'other': DataType.int64.id},
           data: [
             [BigInt.parse('9223372036854775807'), BigInt.from(7)],
           ],
@@ -500,7 +503,7 @@ void main() {
           jv: 1,
           jid: 2,
           jnf: 3,
-          schema: {'id': JDataType.int64.id},
+          schema: {'id': DataType.int64.id},
           data: [
             ['00042'],
           ],
@@ -533,7 +536,7 @@ void main() {
           jv: 1,
           jid: 2,
           jnf: 4,
-          schema: {'amount': JDataType.numeric.id, 'name': JDataType.text.id},
+          schema: {'amount': DataType.numeric.id, 'name': DataType.text.id},
           data: [
             ['001.2300', 'Original'],
           ],
@@ -568,7 +571,7 @@ void main() {
         jsonc: JsonC(
           jv: 1,
           jid: 2,
-          schema: {'name': JDataType.text.id},
+          schema: {'name': DataType.text.id},
           data: [
             ['Alice'],
           ],

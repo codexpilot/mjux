@@ -91,12 +91,10 @@ packages:
   jcore:
     dependency: transitive
     description:
-      path: "."
-      ref: "8f3c3a796504ec5e6f2e96a59015fd4b34ea964c"
-      resolved-ref: "8f3c3a796504ec5e6f2e96a59015fd4b34ea964c"
-      url: "https://github.com/codexpilot/jcore.git"
-    source: git
-    version: "2.0.0"
+      path: "/Users/Shared/dev/git/jcore/dart"
+      relative: false
+    source: path
+    version: "4.4.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -175,7 +173,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.1.0"
+    version: "0.2.0"
   path:
     dependency: transitive
     description:
