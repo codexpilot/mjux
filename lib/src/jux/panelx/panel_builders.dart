@@ -19,7 +19,7 @@ class PanelBuilderRegistry {
   /// Build a panel widget for a partial view definition.
   static Widget build(
     BuildContext context,
-    jux.PartialViewDef viewDef,
+    jux.PanelDef viewDef,
     jux.ViewModel viewModel,
   ) {
     final builder = get(viewDef.uix.i);
@@ -35,14 +35,14 @@ class PanelBuilderRegistry {
 /// Builder function for a panel.
 typedef PanelBuilder = Widget Function(
   BuildContext context,
-  jux.PartialViewDef viewDef,
+  jux.PanelDef viewDef,
   jux.ViewModel viewModel,
 );
 
 /// Collection panel builder with actual data binding.
 Widget buildCollectionPanel(
   BuildContext context,
-  jux.PartialViewDef viewDef,
+  jux.PanelDef viewDef,
   jux.ViewModel viewModel, {
   VoidCallback? onRefresh,
   void Function(Map<String, dynamic>)? onSelectRow,
@@ -131,7 +131,7 @@ Widget buildCollectionPanel(
 /// Inspection panel builder with actual data binding.
 Widget buildInspectionPanel(
   BuildContext context,
-  jux.PartialViewDef viewDef,
+  jux.PanelDef viewDef,
   jux.ViewModel viewModel, {
   VoidCallback? onEdit,
   VoidCallback? onBack,
@@ -208,7 +208,7 @@ Widget buildInspectionPanel(
 /// Form panel builder with actual data binding.
 Widget buildFormPanel(
   BuildContext context,
-  jux.PartialViewDef viewDef,
+  jux.PanelDef viewDef,
   jux.ViewModel viewModel, {
   void Function(String, dynamic)? onFieldChanged,
   VoidCallback? onSave,

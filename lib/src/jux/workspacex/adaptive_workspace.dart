@@ -3,7 +3,7 @@ library;
 
 import 'package:material_ui/material_ui.dart';
 import 'package:jcore/jux.dart' as jux;
-import '../builders/panel_builders.dart';
+import '../panelx/panel_builders.dart';
 
 /// Breakpoint for desktop vs mobile layout (pixels).
 const double kDesktopBreakpoint = 768.0;
@@ -43,9 +43,9 @@ class AdaptiveWorkspace extends StatefulWidget {
   });
 
   final jux.WorkspaceDef workspace;
-  final jux.FullViewDef fullView;
+  final jux.SurfaceDef fullView;
   final jux.ComposedViewModel viewModel;
-  final Map<String, jux.PartialViewDef> panelRegistry;
+  final Map<String, jux.PanelDef> panelRegistry;
   final VoidCallback? onBack;
 
   @override

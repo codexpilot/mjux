@@ -20,10 +20,10 @@ class StorageProfilesFixture {
   });
 
   final jux.WorkspaceDef workspace;
-  final jux.FullViewDef fullView;
-  final jux.PartialViewDef collection;
-  final jux.PartialViewDef inspection;
-  final jux.PartialViewDef form;
+  final jux.SurfaceDef fullView;
+  final jux.PanelDef collection;
+  final jux.PanelDef inspection;
+  final jux.PanelDef form;
   final Map<String, dynamic> schema;
   final List<Map<String, dynamic>> data;
   final Map<String, jux.UIDef> registry;
@@ -38,10 +38,10 @@ class StorageProfilesFixture {
     final dataJson = await _loadJson('example/fixtures/storage_profile_data.json');
 
     final workspace = jux.WorkspaceDef.fromJson(workspaceJson);
-    final fullView = jux.FullViewDef.fromJson(fullViewJson);
-    final collection = jux.PartialViewDef.fromJson(collectionJson);
-    final inspection = jux.PartialViewDef.fromJson(inspectionJson);
-    final form = jux.PartialViewDef.fromJson(formJson);
+    final fullView = jux.SurfaceDef.fromJson(fullViewJson);
+    final collection = jux.PanelDef.fromJson(collectionJson);
+    final inspection = jux.PanelDef.fromJson(inspectionJson);
+    final form = jux.PanelDef.fromJson(formJson);
 
     final registry = <String, jux.UIDef>{
       workspace.key: workspace,

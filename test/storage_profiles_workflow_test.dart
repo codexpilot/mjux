@@ -46,10 +46,10 @@ void main() {
     late List<Map<String, dynamic>> testData;
     late jdata.QueryService queryService;
     late jux.WorkspaceDef workspace;
-    late jux.FullViewDef fullView;
-    late jux.PartialViewDef collection;
-    late jux.PartialViewDef inspection;
-    late jux.PartialViewDef form;
+    late jux.SurfaceDef fullView;
+    late jux.PanelDef collection;
+    late jux.PanelDef inspection;
+    late jux.PanelDef form;
     late Map<String, jux.UIDef> registry;
 
     setUp(() {
@@ -60,7 +60,7 @@ void main() {
 
       queryService = _MockQueryService(testData);
 
-      collection = jux.PartialViewDef(
+      collection = jux.PanelDef(
         key: 'storage_profile_collection',
         schemaVersion: 1,
         uix: jux.UIX.collectionPanel,
@@ -110,10 +110,10 @@ void main() {
         ],
       );
 
-      fullView = jux.FullViewDef(
+      fullView = jux.SurfaceDef(
         key: 'storage_profiles_view',
         schemaVersion: 1,
-        uix: jux.UIX.recordWorkspace,
+        uix: jux.UIX.recordSurface,
         title: 'Storage Profiles',
         supportedWorkspaces: [jux.UIX.deskWorkspace.i, jux.UIX.mobileWorkspace.i],
         viewModelBinding: 'composed',
