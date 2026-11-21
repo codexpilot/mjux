@@ -55,11 +55,13 @@ class AdaptiveWorkspace extends StatefulWidget {
 class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
   late String _activeDestination;
   final List<String> _panelHistory = [];
+  final List<String> _destinationHistory = [];
 
   @override
   void initState() {
     super.initState();
     _activeDestination = widget.workspace.initialDestination;
+    _destinationHistory.add(_activeDestination);
 
     // Set initial panel from mobile composition
     final panels = widget.fullView.panels;
@@ -91,26 +93,105 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
     return MediaQuery.of(context).size.width >= kDesktopBreakpoint;
   }
 
-  void _handleDestinationSelected(String destinationId) {
+  /// Shows confirmation dialog if there are unsaved changes.
+  /// Returns true if navigation should proceed (no changes or user confirmed discard).
+  Future<bool> _confirmDiscardChanges() async {
+    if (!widget.viewModel.hasUnsavedChanges) {
+      return true; // No changes, proceed
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unsaved changes'),
+        content: const Text('You have unsaved changes. Discard them?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
+  }
+
+  void _handleDestinationSelected(String destinationId) async {
+    // Guard against navigation with unsaved changes
+    if (!await _confirmDiscardChanges()) {
+      return; // User cancelled
+    }
+
+    // Look up the destination
+    final destination = widget.workspace.destinations.firstWhere(
+      (d) => d.id == destinationId,
+      orElse: () => throw StateError('Destination $destinationId not found'),
+    );
+
+    // Verify the destination's viewKey matches the current fullView
+    if (destination.viewKey != widget.fullView.key) {
+      // This would require loading a different surface
+      // For now, log a warning since the current API only supports one surface
+      debugPrint(
+        'Warning: Destination ${destination.id} references view ${destination.viewKey} '
+        'but AdaptiveWorkspace is displaying ${widget.fullView.key}',
+      );
+    }
+
     setState(() {
       _activeDestination = destinationId;
+      _destinationHistory.add(destinationId);
+
+      // Discard any draft when switching destinations
+      if (widget.viewModel.hasUnsavedChanges) {
+        widget.viewModel.cancelEdit();
+      }
+
+      // Reset to initial panel
+      final panels = widget.fullView.panels;
+      if (panels != null) {
+        final initialPanel = panels.mobile.startingPanel;
+        widget.viewModel.setActivePanel(initialPanel);
+        _panelHistory.clear();
+        _panelHistory.add(initialPanel);
+      }
     });
   }
 
-  void _handlePanelTransition(String command) {
+  void _handlePanelTransition(String command) async {
+    // Guard against navigation with unsaved changes
+    if (!await _confirmDiscardChanges()) {
+      return; // User cancelled
+    }
+
     final panels = widget.fullView.panels;
     if (panels == null) return;
 
     final nextPanel = panels.mobile.transitions[command];
     if (nextPanel != null) {
       setState(() {
+        // Discard draft when transitioning
+        if (widget.viewModel.hasUnsavedChanges) {
+          widget.viewModel.cancelEdit();
+        }
+
         widget.viewModel.setActivePanel(nextPanel);
         _panelHistory.add(nextPanel);
       });
     }
   }
 
-  bool _handleBackButton() {
+  Future<bool> _handleBackButton() async {
+    // Guard against navigation with unsaved changes
+    if (!await _confirmDiscardChanges()) {
+      return true; // Consumed - user cancelled
+    }
+
     // Back consumes panel history first
     if (_panelHistory.length > 1) {
       setState(() {
@@ -121,7 +202,26 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
       return true; // Consumed
     }
 
-    // No panel history - delegate to parent
+    // Then consume destination history
+    if (_destinationHistory.length > 1) {
+      setState(() {
+        _destinationHistory.removeLast();
+        final previousDestination = _destinationHistory.last;
+        _activeDestination = previousDestination;
+
+        // Reset to initial panel of destination
+        final panels = widget.fullView.panels;
+        if (panels != null) {
+          final initialPanel = panels.mobile.startingPanel;
+          widget.viewModel.setActivePanel(initialPanel);
+          _panelHistory.clear();
+          _panelHistory.add(initialPanel);
+        }
+      });
+      return true; // Consumed
+    }
+
+    // No history - delegate to parent
     if (widget.onBack != null) {
       widget.onBack!();
       return true;
@@ -162,7 +262,7 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
           widget.viewModel.startEdit();
           _handlePanelTransition('edit');
         },
-        onBack: () => _handleBackButton(),
+        onBack: () async => await _handleBackButton(),
       );
     } else if (uixType == jux.UIX.formPanel) {
       return buildFormPanel(
@@ -173,17 +273,17 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
           try {
             await widget.viewModel.saveDraft(2001);
             if (mounted) {
-              _handleBackButton();
+              await _handleBackButton();
             }
           } catch (e) {
             // Error is already set in view model, no need to show snackbar
           }
         },
-        onCancel: () {
+        onCancel: () async {
           widget.viewModel.cancelEdit();
-          _handleBackButton();
+          await _handleBackButton();
         },
-        onBack: () => _handleBackButton(),
+        onBack: () async => await _handleBackButton(),
       );
     }
 
@@ -204,10 +304,10 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
     }
 
     return PopScope(
-      canPop: _panelHistory.length <= 1,
-      onPopInvokedWithResult: (didPop, result) {
+      canPop: _panelHistory.length <= 1 && _destinationHistory.length <= 1,
+      onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
-          _handleBackButton();
+          await _handleBackButton();
         }
       },
       child: isDesktop
@@ -270,19 +370,21 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
 
   Widget _buildMobile(BuildContext context, jux.PanelComposition panels) {
     final activePanel = widget.viewModel.activePanel ?? panels.mobile.startingPanel;
+    final hasHistory = _panelHistory.length > 1 || _destinationHistory.length > 1;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.workspace.title),
-        leading: _panelHistory.length > 1
+        leading: hasHistory
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => _handleBackButton(),
+                onPressed: () async => await _handleBackButton(),
               )
             : null,
       ),
       body: _buildPanel(context, activePanel),
       bottomNavigationBar: _buildBottomBar(),
+      drawer: _buildDrawer(),
     );
   }
 
@@ -313,6 +415,43 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
             label: dest.label,
           ),
       ],
+    );
+  }
+
+  Widget? _buildDrawer() {
+    // Show drawer when there are >5 destinations or <2 (can't use bottom bar)
+    final primaryDestIds = widget.workspace.primaryDestinations ??
+        widget.workspace.destinations.map((d) => d.id).toList();
+
+    if (primaryDestIds.length >= 2 && primaryDestIds.length <= 5) {
+      return null; // Bottom bar handles this case
+    }
+
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+            ),
+            child: Text(
+              widget.workspace.title,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+          ),
+          for (final dest in widget.workspace.destinations)
+            ListTile(
+              leading: const Icon(Icons.view_list),
+              title: Text(dest.label),
+              selected: dest.id == _activeDestination,
+              onTap: () {
+                Navigator.of(context).pop(); // Close drawer
+                _handleDestinationSelected(dest.id);
+              },
+            ),
+        ],
+      ),
     );
   }
 }
