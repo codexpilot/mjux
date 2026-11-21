@@ -298,6 +298,55 @@ void main() {
       expect(vm.selectedRecord!['name'], 'Modified Profile');
     });
 
+    testWidgets('opens Edit and guards an active draft', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(400, 800);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      final vm = jux.ComposedViewModel(
+        queryService: queryService,
+        fullView: fullView,
+      );
+      addTearDown(vm.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdaptiveWorkspace(
+            workspace: workspace,
+            fullView: fullView,
+            viewModel: vm,
+            panelRegistry: {
+              collection.key: collection,
+              inspection.key: inspection,
+              form.key: form,
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Profile 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      expect(find.text('Edit Profile'), findsOneWidget);
+      expect(find.text('Unsaved changes'), findsNothing);
+
+      await tester.enterText(find.byType(TextFormField).at(1), 'Renamed');
+      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.pumpAndSettle();
+      expect(find.text('Unsaved changes'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      expect(vm.draftRecord?['name'], 'Renamed');
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(vm.hasUnsavedChanges, isFalse);
+      expect(find.text('Details'), findsOneWidget);
+      expect(find.text('Renamed'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
     test('handles failed save with retry', () async {
       var failCount = 0;
       final failingService = _FailingQueryService(testData, () {

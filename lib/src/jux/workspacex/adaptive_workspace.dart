@@ -163,33 +163,32 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
     });
   }
 
-  void _handlePanelTransition(String command) async {
-    // Guard against navigation with unsaved changes
-    if (!await _confirmDiscardChanges()) {
-      return; // User cancelled
-    }
+  Future<void> _handlePanelTransition(
+    String command,
+    VoidCallback preparePanel,
+  ) async {
+    if (!await _confirmDiscardChanges() || !mounted) return;
 
-    final panels = widget.fullView.panels;
-    if (panels == null) return;
-
-    final nextPanel = panels.mobile.transitions[command];
-    if (nextPanel != null) {
-      setState(() {
-        // Discard draft when transitioning
-        if (widget.viewModel.hasUnsavedChanges) {
-          widget.viewModel.cancelEdit();
-        }
-
+    final nextPanel = widget.fullView.panels?.mobile.transitions[command];
+    setState(() {
+      if (widget.viewModel.hasUnsavedChanges) {
+        widget.viewModel.cancelEdit();
+      }
+      preparePanel();
+      if (nextPanel != null) {
         widget.viewModel.setActivePanel(nextPanel);
         _panelHistory.add(nextPanel);
-      });
-    }
+      }
+    });
   }
 
   Future<bool> _handleBackButton() async {
     // Guard against navigation with unsaved changes
-    if (!await _confirmDiscardChanges()) {
+    if (!await _confirmDiscardChanges() || !mounted) {
       return true; // Consumed - user cancelled
+    }
+    if (widget.viewModel.hasUnsavedChanges) {
+      widget.viewModel.cancelEdit();
     }
 
     // Back consumes panel history first
@@ -245,10 +244,10 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
         viewDef,
         widget.viewModel,
         onRefresh: () => widget.viewModel.load(),
-        onSelectRow: (record) {
-          widget.viewModel.selectRecord(record);
-          _handlePanelTransition('select_row');
-        },
+        onSelectRow: (record) => _handlePanelTransition(
+          'select_row',
+          () => widget.viewModel.selectRecord(record),
+        ),
         onCreate: () {
           // Create new record logic would go here
         },
@@ -258,10 +257,7 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
         context,
         viewDef,
         widget.viewModel,
-        onEdit: () {
-          widget.viewModel.startEdit();
-          _handlePanelTransition('edit');
-        },
+        onEdit: () => _handlePanelTransition('edit', widget.viewModel.startEdit),
         onBack: () async => await _handleBackButton(),
       );
     } else if (uixType == jux.UIX.formPanel) {
