@@ -11,10 +11,10 @@ void main() {
         title: 'Contact',
         fields: [TextFieldSpec(key: name, label: 'Name')],
       );
-      final original = JsonC(
+      final original = _rows(
         jv: 42,
         jid: 7,
-        jnf: 3,
+        encoding: 1010,
         schema: {'id': DataType.int64.id, 'name': DataType.text.id},
         data: [
           [1, 'Alice'],
@@ -23,7 +23,11 @@ void main() {
       );
       final binding = JsonCFormBinding(
         form: form,
-        jsonc: original,
+        jv: original.jv,
+        jid: original.jid,
+        schema: original.schema,
+        data: original.data,
+        encoding: original.encoding,
         rowIndex: 1,
         columns: {name: 'name'},
       );
@@ -32,7 +36,7 @@ void main() {
       final result = binding.toJsonC(SaveRequested({name: 'Robert'}));
       expect(result.jv, 42);
       expect(result.jid, 7);
-      expect(result.jnf, 3);
+      expect(result.encoding, 1010);
       expect(result.schema, original.schema);
       expect(result.data, [
         [1, 'Alice'],
@@ -42,7 +46,7 @@ void main() {
         [1, 'Alice'],
         [2, 'Bob'],
       ]);
-      expect(JsonC.parse(result.encode()).toJson(), result.toJson());
+      expect(_decode(result), result.data);
     });
 
     test('validates schema, row, field bindings, and data types', () {
@@ -53,16 +57,20 @@ void main() {
         fields: [TextFieldSpec(key: name, label: 'Name')],
       );
       JsonCFormBinding bind(
-        JsonC jsonc,
+        _Rows jsonc,
         int row,
         Map<FieldKey, String> columns,
       ) => JsonCFormBinding(
         form: form,
-        jsonc: jsonc,
+        jv: jsonc.jv,
+        jid: jsonc.jid,
+        schema: jsonc.schema,
+        data: jsonc.data,
+        encoding: jsonc.encoding,
         rowIndex: row,
         columns: columns,
       );
-      final valid = JsonC(
+      final valid = _rows(
         jv: 1,
         jid: 2,
         schema: {'name': DataType.text.id},
@@ -73,7 +81,7 @@ void main() {
 
       expect(
         () => bind(
-          JsonC(
+          _rows(
             jv: 1,
             jid: 2,
             data: [
@@ -87,7 +95,7 @@ void main() {
       );
       expect(
         () => bind(
-          JsonC(jv: 1, jid: 2, schema: {'name': DataType.text.id}),
+          _rows(jv: 1, jid: 2, schema: {'name': DataType.text.id}),
           0,
           {name: 'name'},
         ),
@@ -99,7 +107,7 @@ void main() {
       expect(() => bind(valid, 0, {name: 'missing'}), throwsArgumentError);
       expect(
         () => bind(
-          JsonC(
+          _rows(
             jv: 1,
             jid: 2,
             schema: {'name': 999999},
@@ -114,7 +122,7 @@ void main() {
       );
       expect(
         () => bind(
-          JsonC(jv: 1, jid: 2, schema: {'name': DataType.text.id}, data: [[]]),
+          _rows(jv: 1, jid: 2, schema: {'name': DataType.text.id}, data: [[]]),
           0,
           {name: 'name'},
         ),
@@ -137,26 +145,25 @@ void main() {
       );
       final binding = JsonCFormBinding(
         form: form,
-        jsonc: JsonC(
-          jv: 1,
-          jid: 2,
-          schema: {
-            'text': DataTypeRegistry.encodeText(length: 5),
-            'enabled': DataType.boolean.id,
-            'count': DataType.int32.id,
-            'when': DataType.datetime.id,
-            'details': DataType.jsonb.id,
-          },
-          data: [
-            [
-              null,
-              true,
-              3,
-              1700000000000,
-              {'x': 1},
-            ],
+        jv: 1,
+        jid: 2,
+        schema: {
+          'text': DataTypeRegistry.encodeText(length: 5),
+          'enabled': DataType.boolean.id,
+          'count': DataType.int32.id,
+          'when': DataType.datetime.id,
+          'details': DataType.jsonb.id,
+        },
+        data: [
+          [
+            null,
+            true,
+            3,
+            1700000000000,
+            {'x': 1},
           ],
-        ),
+        ],
+        encoding: 1000,
         rowIndex: 0,
         columns: {
           text: 'text',
@@ -206,7 +213,7 @@ void main() {
       final enabled = FieldKey();
       final count = FieldKey();
       final details = FieldKey();
-      final source = JsonC(
+      final source = _rows(
         jv: 1,
         jid: 2,
         schema: {
@@ -231,7 +238,11 @@ void main() {
             TextFieldSpec(key: details, label: 'Details'),
           ],
         ),
-        jsonc: source,
+        jv: source.jv,
+        jid: source.jid,
+        schema: source.schema,
+        data: source.data,
+        encoding: source.encoding,
         rowIndex: 0,
         columns: {enabled: 'enabled', count: 'count', details: 'details'},
       );
@@ -252,22 +263,20 @@ void main() {
       ]);
     });
 
-    test('keeps decimal strings exact in precision-safe JSONC mode', () {
+    test('keeps decimal strings exact in JX string mode', () {
       final amount = FieldKey();
       final binding = JsonCFormBinding(
         form: FormEditor1(
           title: 'Amount',
           fields: [TextFieldSpec(key: amount, label: 'Amount')],
         ),
-        jsonc: JsonC(
-          jv: 1,
-          jid: 2,
-          jnf: 4,
-          schema: {'amount': DataType.numeric.id},
-          data: [
-            ['12345678901234567890.123456789'],
-          ],
-        ),
+        jv: 1,
+        jid: 2,
+        encoding: 1000,
+        schema: {'amount': DataType.numeric.id},
+        data: [
+          ['12345678901234567890.123456789'],
+        ],
         rowIndex: 0,
         columns: {amount: 'amount'},
       );
@@ -296,20 +305,19 @@ void main() {
           title: 'Details',
           fields: [TextFieldSpec(key: details, label: 'Details')],
         ),
-        jsonc: JsonC(
-          jv: 1,
-          jid: 2,
-          schema: {'details': DataType.jsonb.id},
-          data: [
-            [sourceDetails],
-          ],
-        ),
+        jv: 1,
+        jid: 2,
+        schema: {'details': DataType.jsonb.id},
+        data: [
+          [sourceDetails],
+        ],
+        encoding: 1000,
         rowIndex: 0,
         columns: {details: 'details'},
       );
       (sourceDetails['items'] as List).clear();
       final saved = binding.toJsonC(SaveRequested(binding.initialValues));
-      final object = saved.data![0][0] as Map<String, dynamic>;
+      final object = saved.data[0][0] as Map<String, dynamic>;
       final items = object['items'] as List;
       expect(items, [
         {'value': 'original'},
@@ -328,15 +336,13 @@ void main() {
           title: 'ID',
           fields: [TextFieldSpec(key: value, label: 'ID')],
         ),
-        jsonc: JsonC(
-          jv: 1,
-          jid: 2,
-          jnf: 3,
-          schema: {'id': DataType.int64.id},
-          data: [
-            ['0'],
-          ],
-        ),
+        jv: 1,
+        jid: 2,
+        encoding: 1100,
+        schema: {'id': DataType.int64.id},
+        data: [
+          ['0'],
+        ],
         rowIndex: 0,
         columns: {value: 'id'},
       );
@@ -360,22 +366,20 @@ void main() {
           title: 'ID',
           fields: [TextFieldSpec(key: id, label: 'ID')],
         ),
-        jsonc: JsonC(
-          jv: 1,
-          jid: 2,
-          jnf: 2,
-          schema: {'id': DataType.int64.id},
-          data: [
-            [0],
-          ],
-        ),
+        jv: 1,
+        jid: 2,
+        encoding: 1110,
+        schema: {'id': DataType.int64.id},
+        data: [
+          [0],
+        ],
         rowIndex: 0,
         columns: {id: 'id'},
       );
       for (final text in ['-9223372036854775808', '9223372036854775807']) {
         final saved = binding.toJsonC(SaveRequested({id: text}));
-        expect(saved.data![0][0], int.parse(text));
-        expect(JsonC.parse(saved.encode()).data, saved.data);
+        expect(saved.data[0][0], int.parse(text));
+        expect(_decode(saved), saved.data);
       }
     }, skip: const bool.fromEnvironment('dart.library.js_interop'));
 
@@ -386,17 +390,15 @@ void main() {
           title: 'Amount',
           fields: [TextFieldSpec(key: amount, label: 'Amount')],
         ),
-        jsonc: JsonC(
-          jv: 1,
-          jid: 2,
-          jnf: 4,
-          schema: {
-            'amount': DataTypeRegistry.encodeNumeric(precision: 5, scale: 2),
-          },
-          data: [
-            ['0.00'],
-          ],
-        ),
+        jv: 1,
+        jid: 2,
+        encoding: 1000,
+        schema: {
+          'amount': DataTypeRegistry.encodeNumeric(precision: 5, scale: 2),
+        },
+        data: [
+          ['0.00'],
+        ],
         rowIndex: 0,
         columns: {amount: 'amount'},
       );
@@ -417,21 +419,24 @@ void main() {
     test('edits parsed INT64 values and retains other BigInt cells', () {
       final id = FieldKey();
       final name = FieldKey();
-      final source = JsonC.fromJson({
-        'jv': 1,
-        'jid': 2,
-        'jnf': 5,
-        'schema': {
-          'id': DataType.int64.id,
-          'name': DataType.text.id,
-          'other': DataType.int64.id,
-        },
-        'data': [
-          ['9223372036854775807', 'Original', '-9223372036854775808'],
-          ['42', 'Other row', '43'],
-        ],
-      });
-      expect(source.data![0][0], BigInt.parse('9223372036854775807'));
+      final schema = {
+        'id': DataType.int64.id,
+        'name': DataType.text.id,
+        'other': DataType.int64.id,
+      };
+      const encoding = 1000;
+      final source = _rows(
+        jv: 1,
+        jid: 2,
+        encoding: encoding,
+        schema: schema,
+        data: JxCodec.decodeFromJsonString(
+          encoding: encoding,
+          schema: _jxSchema(schema),
+          jsonString: '{"data":[["9223372036854775807","Original","-9223372036854775808"],["42","Other row","43"]]}',
+        ),
+      );
+      expect(source.data[0][0], BigInt.parse('9223372036854775807'));
       final binding = JsonCFormBinding(
         form: FormEditor1(
           title: 'Record',
@@ -440,7 +445,11 @@ void main() {
             TextFieldSpec(key: name, label: 'Name'),
           ],
         ),
-        jsonc: source,
+        jv: source.jv,
+        jid: source.jid,
+        schema: source.schema,
+        data: source.data,
+        encoding: source.encoding,
         rowIndex: 0,
         columns: {id: 'id', name: 'name'},
       );
@@ -448,13 +457,12 @@ void main() {
       final updated = binding.toJsonC(
         SaveRequested({id: '-9223372036854775808', name: 'Edited'}),
       );
-      expect(updated.data![0][0], BigInt.parse('-9223372036854775808'));
-      expect(updated.data![0][2], BigInt.parse('-9223372036854775808'));
-      expect(updated.data![1], [BigInt.from(42), 'Other row', BigInt.from(43)]);
-      expect(source.data![0][1], 'Original');
-      final roundTrip = JsonC.parse(updated.encode());
-      expect(roundTrip.data, updated.data);
-      expect((updated.toJson()['data'] as List)[0], [
+      expect(updated.data[0][0], BigInt.parse('-9223372036854775808'));
+      expect(updated.data[0][2], BigInt.parse('-9223372036854775808'));
+      expect(updated.data[1], [BigInt.from(42), 'Other row', BigInt.from(43)]);
+      expect(source.data[0][1], 'Original');
+      expect(_decode(updated), updated.data);
+      expect(_encode(updated).data[0], [
         '-9223372036854775808',
         'Edited',
         '-9223372036854775808',
@@ -462,12 +470,12 @@ void main() {
     });
 
     test('accepts constructed BigInt cells for each INT64 string mode', () {
-      for (final mode in [0, 3, 5]) {
+      for (final mode in [1000, 1100, 8000, 8100]) {
         final id = FieldKey();
-        final source = JsonC(
+        final source = _rows(
           jv: 1,
           jid: 2,
-          jnf: mode,
+          encoding: mode,
           schema: {'id': DataType.int64.id, 'other': DataType.int64.id},
           data: [
             [BigInt.parse('9223372036854775807'), BigInt.from(7)],
@@ -478,7 +486,11 @@ void main() {
             title: 'ID',
             fields: [TextFieldSpec(key: id, label: 'ID')],
           ),
-          jsonc: source,
+          jv: source.jv,
+          jid: source.jid,
+          schema: source.schema,
+          data: source.data,
+          encoding: source.encoding,
           rowIndex: 0,
           columns: {id: 'id'},
         );
@@ -486,28 +498,26 @@ void main() {
         final unchanged = binding.toJsonC(SaveRequested(binding.initialValues));
         expect(unchanged.data, source.data);
         final edited = binding.toJsonC(SaveRequested({id: '8'}));
-        expect(JsonC.parse(edited.encode()).data, [
+        expect(_decode(edited), [
           [BigInt.from(8), BigInt.from(7)],
         ]);
       }
     });
 
-    test('uses jcore INT64 normalization for constructed string cells', () {
+    test('normalizes INT64 for display for constructed string cells', () {
       final id = FieldKey();
       final binding = JsonCFormBinding(
         form: FormEditor1(
           title: 'ID',
           fields: [TextFieldSpec(key: id, label: 'ID')],
         ),
-        jsonc: JsonC(
-          jv: 1,
-          jid: 2,
-          jnf: 3,
-          schema: {'id': DataType.int64.id},
-          data: [
-            ['00042'],
-          ],
-        ),
+        jv: 1,
+        jid: 2,
+        encoding: 1000,
+        schema: {'id': DataType.int64.id},
+        data: [
+          ['00042'],
+        ],
         rowIndex: 0,
         columns: {id: 'id'},
       );
@@ -516,7 +526,7 @@ void main() {
       expect(unchanged.data, [
         ['00042'],
       ]);
-      expect(JsonC.parse(unchanged.encode()).data, [
+      expect(_decode(unchanged), [
         [BigInt.from(42)],
       ]);
     });
@@ -532,15 +542,13 @@ void main() {
             TextFieldSpec(key: name, label: 'Name'),
           ],
         ),
-        jsonc: JsonC(
-          jv: 1,
-          jid: 2,
-          jnf: 4,
-          schema: {'amount': DataType.numeric.id, 'name': DataType.text.id},
-          data: [
-            ['001.2300', 'Original'],
-          ],
-        ),
+        jv: 1,
+        jid: 2,
+        encoding: 1000,
+        schema: {'amount': DataType.numeric.id, 'name': DataType.text.id},
+        data: [
+          ['001.2300', 'Original'],
+        ],
         rowIndex: 0,
         columns: {amount: 'amount', name: 'name'},
       );
@@ -568,18 +576,17 @@ void main() {
       );
       final binding = JsonCFormBinding(
         form: form,
-        jsonc: JsonC(
-          jv: 1,
-          jid: 2,
-          schema: {'name': DataType.text.id},
-          data: [
-            ['Alice'],
-          ],
-        ),
+        jv: 1,
+        jid: 2,
+        schema: {'name': DataType.text.id},
+        data: [
+          ['Alice'],
+        ],
+        encoding: 1000,
         rowIndex: 0,
         columns: {name: 'name'},
       );
-      JsonC? saved;
+      _Rows? saved;
       final surface = const Utility().open(
         form,
         initialValues: binding.initialValues,
@@ -608,3 +615,42 @@ void main() {
     });
   });
 }
+
+typedef _Rows = ({
+  Map<String, int> schema,
+  List<List<dynamic>> data,
+  int encoding,
+  int? jv,
+  int? jid,
+});
+
+_Rows _rows({
+  Map<String, int> schema = const {},
+  List<List<dynamic>> data = const [],
+  int encoding = 1000,
+  int? jv,
+  int? jid,
+}) => (schema: schema, data: data, encoding: encoding, jv: jv, jid: jid);
+
+JxSchema _jxSchema(Map<String, int> schema) => JxSchema([
+  for (final (index, column) in schema.entries.indexed)
+    JxField(
+      i: index + 1,
+      c: column.key,
+      n: column.key,
+      typeId: column.value,
+      typeName: column.value.toString(),
+    ),
+]);
+
+JxBody _encode(_Rows rows) => JxCodec.encode(
+  rows: rows.data,
+  encoding: rows.encoding,
+  schema: _jxSchema(rows.schema),
+);
+
+List<List<dynamic>> _decode(_Rows rows) => JxCodec.decodeFromJsonString(
+  encoding: rows.encoding,
+  schema: _jxSchema(rows.schema),
+  jsonString: _encode(rows).encode(),
+);

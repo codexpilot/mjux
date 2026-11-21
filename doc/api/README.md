@@ -16,7 +16,7 @@ and runs a complete host app. [Example manifest](../../example/pubspec.yaml)
 | `Surface` | Owns one instance's interaction state. The host calls `dispose()` when finished with it. |
 | `SaveRequested` | Contains an immutable snapshot of the draft values at submission. |
 | `SaveSucceeded` / `SaveFailed` | Report whether the host saved the snapshot. `SaveFailed` takes a message to display. |
-| `JsonCFormBinding` | Maps a row of a jcore `JsonC` to form values and applies a save snapshot to a new `JsonC`. |
+| `JsonCFormBinding` | Maps a decoded JX row to form values and applies edits to a new row snapshot. |
 
 Create the definition and surfaces outside `build`. Mount each surface in one
 `SurfaceView(surface: surface)` at a time inside a `MaterialApp` from
@@ -56,16 +56,13 @@ final surface = const Utility().open(
 - Required fields reject missing, null, or whitespace-only values. Errors
   appear after a field is touched or an edited form is submitted.
 
-### jcore JSONC mapping
+### JCore JX mapping
 
-MJUX depends on [jcore](https://github.com/codexpilot/jcore) 3.0.9 for its Dart
-data type registry, exact numeric values, and JSONC format. The package remains
-`jcore`; its repository package root is `dart`. `JsonCFormBinding` accepts the
-current `DataType` and `DataTypeRegistry` catalog and maps every form key to a
-distinct column in a full JSONC object (one with both schema and data). Legacy
-Group 3 type IDs are not accepted by this binding. Declare jcore as a direct
-dependency of an app that imports it. Import jcore to construct or decode a
-`JsonC`, then use the binding to open the form:
+MJUX uses JCore's Dart type registry and exact numeric values. Declare JCore
+as a direct dependency if the app imports it. `JsonCFormBinding` accepts the
+ordered schema, decoded positional rows, and four-digit JX encoding. Column
+order in the schema must match the decoded row order. Each form key maps to
+a distinct column. [JCore](https://github.com/codexpilot/jcore)
 
 ```dart
 import 'package:jcore/jcore.dart';
@@ -76,17 +73,15 @@ final form = FormEditor1(
   title: 'Plant details',
   fields: [TextFieldSpec(key: name, label: 'Plant name', isRequired: true)],
 );
-final jsonc = JsonC(
+final binding = JsonCFormBinding(
+  form: form,
+  encoding: 8000,
   jv: 1,
   jid: 12345,
   schema: {'name': DataType.text.id},
   data: [
     ['Basil'],
   ],
-);
-final binding = JsonCFormBinding(
-  form: form,
-  jsonc: jsonc,
   rowIndex: 0,
   columns: {name: 'name'},
 );
@@ -96,7 +91,7 @@ final surface = const Utility().open(
   onSave: (request) async {
     try {
       final updated = binding.toJsonC(request);
-      // Persist updated, for example by sending updated.toJson() to the host.
+      // Use updated.data and updated.encoding when saving the result.
       return const SaveSucceeded();
     } on ArgumentError {
       return const SaveFailed('Check the entered values.');
@@ -105,33 +100,24 @@ final surface = const Utility().open(
 );
 ```
 
-The form edits string values; the binding converts mapped cells according to
-their jcore schema types when loading and saving. It supports boolean,
-SMALLINT, INT32, INT64, datetime, time, text, UUID, TEXT0Z, NUMERIC, and JSONB
-values. JSONB fields are edited as JSON text. JSONC number-format modes
-determine whether numeric and int64 values are represented as strings.
-Datetime and time use jcore's integer storage values, not formatted dates or
-times. Booleans use `true` or `false`. Text and numeric schema length or
-precision constraints are checked when applicable.
+The form edits string values and converts them using JCore schema types. It
+supports boolean, SMALLINT, INT32, INT64, datetime, time, text, UUID, NUMERIC,
+and JSONB values. JSONB fields use JSON text. Datetime and time use decoded
+integer values. Booleans use `true` or `false`. The binding checks text length,
+numeric precision, and numeric scale when the schema specifies them.
 
-The binding snapshots its input. `toJsonC` returns a new snapshot, preserving
-metadata, unbound columns, other rows, and unchanged cells. Each call starts
-from the binding's original snapshot; create a new binding from the latest
-saved JSONC when subsequent saves must include changes made elsewhere. The
-constructor rejects invalid metadata, schema or row shape, a missing row,
-invalid bound values, and missing, duplicate, or unknown column bindings. A save
-must include exactly the bound fields; invalid or unrepresentable edits throw
-`ArgumentError` so the host can report a save failure.
+The binding snapshots its input. `toJsonC` returns a record containing
+`schema`, `data`, `encoding`, and optional result metadata `jv` and `jid`.
+It preserves unbound columns, other rows, and unchanged cells. Create a new
+binding from newly saved data when subsequent saves need to include other
+changes. The constructor validates encoding, metadata, row shape, and column
+mappings. A save must contain exactly the bound fields. Invalid inputs and
+unrepresentable edits throw `ArgumentError`.
 
-For edited decimal values, use a numeric-string `jnf` mode (0, 4, or 5). The
-binding validates precision and scale with jcore and stores an edited exact
-value as `Numeric`; JSONC emits it as a decimal string in these modes. In
-raw-number modes (1, 2, or 3), edited NUMERIC values must be integers within
-the exact portable range (±9007199254740991). INT64 uses Dart `int` in
-number modes and `BigInt` in string modes (0, 3, or 5); string modes serialize
-INT64 cells as decimal strings. SMALLINT, INT32, datetime, and time use integer
-representations. Unchanged cells keep their original representation and do not
-undergo an edit conversion.
+With `N=0`, the binding stores edited decimals as exact `Numeric` values.
+With `N=1`, it accepts NUMERIC edits as integers within ±9007199254740991.
+For INT64, the binding uses `BigInt` with `L=0` and `int` with `L=1`.
+Use `JxCodec` with the original JX schema when serializing the edited rows.
 
 ### Saving and lifecycle
 

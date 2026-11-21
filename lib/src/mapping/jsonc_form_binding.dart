@@ -4,31 +4,35 @@ import 'package:jcore/jcore.dart';
 
 import '../catalog/form_editor_1.dart';
 
-/// Binds form fields to one row of JSONC using JCore's current type catalog.
+/// Binds form fields to one row of JX tabular data using JCore's type catalog.
 ///
 /// The binding snapshots its input. Use [initialValues] when opening a surface,
 /// then pass its save request to [toJsonC]. Unbound columns and other rows are
-/// preserved. Schema IDs must be recognized by [DataTypeRegistry]; legacy
-/// Group 3 IDs are rejected. Edited decimals become [Numeric] values when the
-/// JSONC number mode uses strings. Values are displayed as text; datetime and
-/// time use JCore's integer representations, not localized dates or times.
+/// preserved. Schema IDs must be recognized by [DataTypeRegistry]. Edited
+/// decimals become [Numeric] values when the encoding uses numeric strings.
+/// Values are displayed as text; datetime and time use JCore's integer
+/// representations, not localized dates or times.
 final class JsonCFormBinding {
   factory JsonCFormBinding({
     required FormEditor1 form,
-    required JsonC jsonc,
+    required Map<String, int> schema,
+    required List<List<dynamic>> data,
+    required int encoding,
     required int rowIndex,
     required Map<FieldKey, String> columns,
+    int? jv,
+    int? jid,
   }) {
-    final schema = jsonc.schema;
-    final data = jsonc.data;
-    if (jsonc.jv < 0 ||
-        jsonc.jid < 0 ||
-        jsonc.encoding < 0 ||
-        jsonc.encoding > 5 ||
-        schema == null ||
-        data == null) {
-      throw ArgumentError('A full JSONC with valid metadata is required.');
+    final JxEncoding mode;
+    try {
+      mode = JxEncoding.parse(encoding);
+    } on FormatException catch (error) {
+      throw ArgumentError.value(encoding, 'encoding', error.message);
     }
+    if ((jv != null && jv < 0) || (jid != null && jid < 0)) {
+      throw ArgumentError('Result metadata must be non-negative.');
+    }
+
     final schemaErrors = <String>[];
     if (schema.isEmpty) schemaErrors.add('Schema cannot be empty');
     for (final entry in schema.entries) {
@@ -42,12 +46,14 @@ final class JsonCFormBinding {
       }
     }
     if (schemaErrors.isNotEmpty) throw ArgumentError(schemaErrors.join('; '));
+
     if (data.any((row) => row.length != schema.length)) {
-      throw ArgumentError('Every JSONC row must match the schema width.');
+      throw ArgumentError('Every data row must match the schema width.');
     }
     if (rowIndex < 0 || rowIndex >= data.length) {
       throw ArgumentError.value(rowIndex, 'rowIndex', 'Row does not exist.');
     }
+
     final fieldKeys = form.fields.map((field) => field.key).toSet();
     if (columns.length != fieldKeys.length ||
         columns.keys.any((key) => !fieldKeys.contains(key)) ||
@@ -57,79 +63,109 @@ final class JsonCFormBinding {
         'Each form field must map to a unique schema column.',
       );
     }
-    final frozen = JsonC(
-      jv: jsonc.jv,
-      jid: jsonc.jid,
-      jnf: jsonc.jnf,
-      schema: Map<String, int>.unmodifiable(schema),
-      data: List<List<dynamic>>.unmodifiable(
-        data.map((row) => _freezeRow(row, schema.values.toList())),
-      ),
+
+    final frozenSchema = Map<String, int>.unmodifiable(schema);
+    final types = frozenSchema.values.toList();
+    final frozenData = List<List<dynamic>>.unmodifiable(
+      data.map((row) => _freezeRow(row, types)),
     );
-    // JConverter uses jcore's schema order to map row cells to column names.
-    final row = JConverter.toMaps(frozen)[rowIndex];
+
+    final row = frozenData[rowIndex];
+    final columnNames = frozenSchema.keys.toList();
     final initial = <FieldKey, String?>{};
     for (final field in form.fields) {
       final column = columns[field.key]!;
-      final display = _displayValue(row[column], schema[column]!, frozen);
+      final display = _displayValue(
+        row[columnNames.indexOf(column)],
+        frozenSchema[column]!,
+        mode,
+      );
       _validateChoice(field, display);
       initial[field.key] = display;
     }
+
     return JsonCFormBinding._(
       form,
-      frozen,
+      frozenSchema,
+      frozenData,
+      mode,
       rowIndex,
       Map.unmodifiable(columns),
       Map.unmodifiable(initial),
+      jv,
+      jid,
     );
   }
 
   JsonCFormBinding._(
     this._form,
-    this._jsonc,
+    this._schema,
+    this._data,
+    this._encoding,
     this._rowIndex,
     this._columns,
     this.initialValues,
+    this._jv,
+    this._jid,
   );
 
   final FormEditor1 _form;
-  final JsonC _jsonc;
+  final Map<String, int> _schema;
+  final List<List<dynamic>> _data;
+  final JxEncoding _encoding;
   final int _rowIndex;
   final Map<FieldKey, String> _columns;
+  final int? _jv;
+  final int? _jid;
 
   /// Values keyed by the same [FieldKey] objects used in the form.
   final Map<FieldKey, String?> initialValues;
 
-  /// Returns a new immutable JSONC snapshot containing the submitted row.
+  /// Returns a new immutable data snapshot containing the submitted row.
   ///
   /// The original cell is retained when its displayed value is unchanged.
   /// Invalid or unrepresentable edited values throw [ArgumentError].
-  JsonC toJsonC(SaveRequested request) {
+  ///
+  /// The returned structure has the same schema, encoding, jv, and jid,
+  /// with the edited row updated and all other rows unchanged.
+  ({
+    Map<String, int> schema,
+    List<List<dynamic>> data,
+    int encoding,
+    int? jv,
+    int? jid,
+  })
+  toJsonC(SaveRequested request) {
     if (request.values.length != _columns.length ||
         request.values.keys.any((key) => !_columns.containsKey(key))) {
       throw ArgumentError('Save values must contain exactly the bound fields.');
     }
-    final names = _jsonc.columnNames;
-    final rows = _jsonc.data!.map((row) => List<dynamic>.of(row)).toList();
+
+    final columnNames = _schema.keys.toList();
+    final row = List<dynamic>.of(_data[_rowIndex]);
+
     for (final field in _form.fields) {
       final value = request.values[field.key];
       _validateChoice(field, value);
       if (value == initialValues[field.key]) continue;
       final name = _columns[field.key]!;
-      rows[_rowIndex][names.indexOf(name)] = _parseValue(
+      row[columnNames.indexOf(name)] = _parseValue(
         value,
-        _jsonc.schema![name]!,
-        _jsonc,
+        _schema[name]!,
+        _encoding,
       );
     }
-    return JsonC(
-      jv: _jsonc.jv,
-      jid: _jsonc.jid,
-      jnf: _jsonc.jnf,
-      schema: _jsonc.schema,
-      data: List<List<dynamic>>.unmodifiable(
-        rows.map((row) => _freezeRow(row, _jsonc.schema!.values.toList())),
-      ),
+
+    return (
+      schema: _schema,
+      data: List<List<dynamic>>.unmodifiable([
+        ..._data.take(_rowIndex),
+        List<dynamic>.unmodifiable(row),
+        ..._data.skip(_rowIndex + 1),
+      ]),
+      encoding: _encoding.toInt(),
+      jv: _jv,
+      jid: _jid,
     );
   }
 }
@@ -142,7 +178,7 @@ void _validateChoice(FieldSpec field, String? value) {
   }
 }
 
-String? _displayValue(dynamic value, int type, JsonC jsonc) {
+String? _displayValue(dynamic value, int type, JxEncoding encoding) {
   if (value == null) return null;
   if (_isTextType(type)) {
     if (value is! String) {
@@ -156,16 +192,15 @@ String? _displayValue(dynamic value, int type, JsonC jsonc) {
     return value.toString();
   }
   if (_isInteger(type)) {
-    final stringMode = type == DataType.int64.id && jsonc.useBigIntStrings;
-    if (stringMode ? value is! BigInt : value is! int) {
+    final stringMode = type == DataType.int64.id && encoding.int64AsString;
+    if (stringMode ? value is! BigInt && value is! String : value is! int) {
       throw ArgumentError('Unexpected integer representation for type $type.');
     }
     final text = value.toString();
-    _parseInteger(text, type, stringMode);
-    return text;
+    return _parseInteger(text, type, stringMode).toString();
   }
   if (DataTypeRegistry.isValidNumeric(type)) {
-    if (jsonc.useNumericStrings
+    if (encoding.numericAsString
         ? value is! String && value is! Numeric
         : value is! num && value is! Numeric) {
       throw ArgumentError('Unexpected numeric representation.');
@@ -181,7 +216,7 @@ String? _displayValue(dynamic value, int type, JsonC jsonc) {
   throw ArgumentError('Unsupported jcore data type $type.');
 }
 
-dynamic _parseValue(String? value, int type, JsonC jsonc) {
+dynamic _parseValue(String? value, int type, JxEncoding encoding) {
   if (value == null) return null;
   if (_isTextType(type)) {
     _checkTextLength(value, type);
@@ -193,13 +228,13 @@ dynamic _parseValue(String? value, int type, JsonC jsonc) {
     throw ArgumentError('Boolean must be true or false.');
   }
   if (_isInteger(type)) {
-    final stringMode = type == DataType.int64.id && jsonc.useBigIntStrings;
+    final stringMode = type == DataType.int64.id && encoding.int64AsString;
     final integer = _parseInteger(value, type, stringMode);
     return stringMode ? integer : integer.toInt();
   }
   if (DataTypeRegistry.isValidNumeric(type)) {
     _checkDecimal(value, type);
-    if (jsonc.useNumericStrings) {
+    if (encoding.numericAsString) {
       final decoded = DataTypeRegistry.decodeNumeric(type)!;
       final decimal = _expandDecimal(value);
       final scale = decoded.scale ?? _decimalScale(decimal);
@@ -211,7 +246,9 @@ dynamic _parseValue(String? value, int type, JsonC jsonc) {
     }
     // Only safe integers have an exact, portable representation in raw mode.
     if (!RegExp(r'^[+-]?\d+$').hasMatch(value)) {
-      throw ArgumentError('Edited decimals require a numeric-string jnf mode.');
+      throw ArgumentError(
+        'Edited decimals require a numeric-string encoding mode.',
+      );
     }
     final integer = BigInt.parse(value);
     if (integer.abs() > BigInt.from(9007199254740991)) {
@@ -270,14 +307,20 @@ void _checkTextLength(String value, int type) {
 }
 
 void _checkDecimal(Object value, int type) {
-  final error = JConverter.validateValue(value, type, 0, 'value');
+  final decoded = DataTypeRegistry.decodeNumeric(type);
+  if (decoded == null) {
+    throw ArgumentError('Not a numeric type: $type');
+  }
+  final error = numericValueError(
+    value,
+    precision: decoded.precision,
+    scale: decoded.scale,
+  );
   if (error != null) throw ArgumentError(error);
 }
 
 bool _isTextType(int type) =>
-    DataTypeRegistry.isValidText(type) ||
-    type == DataType.uuid.id ||
-    type == DataType.text0z.id;
+    DataTypeRegistry.isValidText(type) || type == DataType.uuid.id;
 
 int _decimalScale(String value) {
   final point = value.indexOf('.');
