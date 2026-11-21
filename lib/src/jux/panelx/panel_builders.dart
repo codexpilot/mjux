@@ -241,6 +241,7 @@ Widget buildFormPanel(
           child: record == null
               ? const Center(child: Text('No record selected'))
               : SingleChildScrollView(
+                  key: ValueKey(record['i']), // Force rebuild when record changes
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
