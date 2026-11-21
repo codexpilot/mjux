@@ -1,6 +1,6 @@
 name: mjux
-description: A Flutter package for reusable catalog interfaces with independent surface state.
-version: 0.1.0
+description: Material app chrome and JSON-driven data workspaces for Flutter with JCore JUX integration.
+version: 0.2.0
 publish_to: none
 
 environment:
@@ -21,3 +21,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
+
+flutter:
+  assets:
+    - example/fixtures/

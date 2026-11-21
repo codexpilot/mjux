@@ -1,0 +1,22 @@
+{
+  "key": "storage_profiles_view",
+  "schemaVersion": 1,
+  "uix": 1000,
+  "title": "Storage Profiles",
+  "supportedWorkspaces": [1, 2],
+  "viewModelBinding": "composed",
+  "panels": {
+    "desktop": {
+      "left": "storage_profile_collection",
+      "center": "storage_profile_inspection",
+      "right": "storage_profile_form"
+    },
+    "mobile": {
+      "startingPanel": "storage_profile_collection",
+      "transitions": {
+        "select_row": "storage_profile_inspection",
+        "edit": "storage_profile_form"
+      }
+    }
+  }
+}

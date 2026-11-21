@@ -1,0 +1,42 @@
+{
+  "key": "storage_profile_collection",
+  "schemaVersion": 1,
+  "uix": 10000,
+  "title": "Storage Profiles",
+  "dataSchemaRef": "storage_profile",
+  "fields": [
+    {
+      "key": "i",
+      "label": "ID",
+      "control": "display",
+      "readOnly": true
+    },
+    {
+      "key": "name",
+      "label": "Name",
+      "control": "display",
+      "readOnly": true
+    },
+    {
+      "key": "ttx",
+      "label": "Type",
+      "control": "display",
+      "readOnly": true
+    }
+  ],
+  "commands": [
+    {
+      "command": "refresh",
+      "label": "Refresh",
+      "operation": 2000
+    },
+    {
+      "command": "select_row",
+      "label": "Select"
+    },
+    {
+      "command": "create",
+      "label": "Create"
+    }
+  ]
+}

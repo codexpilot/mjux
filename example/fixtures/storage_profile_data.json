@@ -1,0 +1,8 @@
+{
+  "key": "storage_profile_data",
+  "records": [
+    {"i": 1, "name": "Default Profile", "ttx": 1},
+    {"i": 2, "name": "Archive Profile", "ttx": 2},
+    {"i": 3, "name": "Backup Profile", "ttx": 3}
+  ]
+}
