@@ -298,7 +298,7 @@ void main() {
       expect(vm.selectedRecord!['name'], 'Modified Profile');
     });
 
-    testWidgets('handles failed save with retry', (tester) async {
+    test('handles failed save with retry', () async {
       var failCount = 0;
       final failingService = _FailingQueryService(testData, () {
         failCount++;
@@ -326,7 +326,7 @@ void main() {
       expect(failCount, 2);
     });
 
-    testWidgets('prevents duplicate saves', (tester) async {
+    test('prevents duplicate saves', () async {
       final vm = jux.ComposedViewModel(
         queryService: queryService,
         fullView: fullView,

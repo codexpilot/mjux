@@ -68,8 +68,23 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
       _panelHistory.add(panels.mobile.startingPanel);
     }
 
+    // Listen to view model changes
+    widget.viewModel.addListener(_onViewModelChanged);
+
     // Load initial data
     widget.viewModel.load();
+  }
+
+  @override
+  void dispose() {
+    widget.viewModel.removeListener(_onViewModelChanged);
+    super.dispose();
+  }
+
+  void _onViewModelChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   bool _isDesktop(BuildContext context) {
@@ -189,7 +204,7 @@ class _AdaptiveWorkspaceState extends State<AdaptiveWorkspace> {
     }
 
     return PopScope(
-      canPop: !_handleBackButton(),
+      canPop: _panelHistory.length <= 1,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           _handleBackButton();
