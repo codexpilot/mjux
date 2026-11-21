@@ -91,12 +91,12 @@ packages:
   jcore:
     dependency: "direct main"
     description:
-      path: "."
-      ref: "8f3c3a796504ec5e6f2e96a59015fd4b34ea964c"
-      resolved-ref: "8f3c3a796504ec5e6f2e96a59015fd4b34ea964c"
+      path: dart
+      ref: main
+      resolved-ref: "4c7a7d4be516cc0484790c8f47213f875917c617"
       url: "https://github.com/codexpilot/jcore.git"
     source: git
-    version: "2.0.0"
+    version: "3.0.9"
   leak_tracker:
     dependency: transitive
     description:

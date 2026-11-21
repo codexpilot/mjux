@@ -13,7 +13,8 @@ dependencies:
   jcore:
     git:
       url: https://github.com/codexpilot/jcore.git
-      ref: 8f3c3a796504ec5e6f2e96a59015fd4b34ea964c
+      ref: main
+      path: dart
   material_ui: ^1.11.0
 
 dev_dependencies:

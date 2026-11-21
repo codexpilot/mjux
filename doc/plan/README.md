@@ -35,8 +35,10 @@ use inside an existing scrolling Workspace supported.
 
 The prototype accepts typed `FormEditor1` configuration with text and choice
 fields, required-field validation, and save snapshots. It uses object identity
-for field keys and preserves omitted keys and explicit nulls in value maps.
-Numeric field types, contract versioning, and the host update API remain open.
+for field keys and preserves omitted keys and explicit nulls in value maps. The
+JSONC binding uses JCore's current data type registry and exact `Numeric` values;
+dedicated numeric field specs, contract versioning, and the host update API
+remain open.
 
 - Define `FormEditor1` as a generic Catalog item, independent of any business
   entity. Specify field configuration, initial values, validation feedback,

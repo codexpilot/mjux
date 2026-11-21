@@ -40,10 +40,12 @@ entry, intermediate drafts, scale and rounding, units, host validation, and
 precision-preserving values across supported platforms. Entry text and stored
 values have distinct responsibilities.
 
-Define the public value types and ownership of any numeric dependency as part
-of the first contract. The [AIX numeric integration plan](aix-numeric-integration.md)
-records an architecture decision to use AIX Numeric. Its precision and platform
-behavior still need verification against that contract.
+JCore owns the shared `Numeric` value type and current data type registry;
+MJUX consumes those through its jcore dependency. The binding now preserves
+exact edited decimals in numeric-string JSONC modes. Locale-aware entry,
+intermediate drafts, rounding policy, and dedicated numeric field specs still
+need a separate MJUX contract. The [original AIX numeric integration plan](aix-numeric-integration.md)
+is retained as a historical proposal and is superseded by this JCore boundary.
 
 ## Relationship with Genux
 
@@ -100,8 +102,9 @@ actions and data. Catalog selection alone does not authorize an operation.
 ### ADR-004 — Numeric precision is a first-class feature
 
 MJUX will support exact decimal, money, quantity, and large-integer fields as
-part of its Catalog contracts. The numeric representation, dependency, input
-semantics, and compatibility with Dataset remain to be settled and verified.
+part of its Catalog contracts. JCore provides the shared `Numeric` and data
+type registry. MJUX still needs to define its field configuration, input
+semantics, and compatibility with Dataset.
 
 ## Success metrics
 
@@ -128,8 +131,8 @@ These targets are planning goals. The working plan records actual status.
 
 ## Open questions
 
-1. What are the detailed decimal and numeric requirements, and who owns the
-   reusable numeric implementation?
+1. What decimal-entry, rounding, and locale requirements should the MJUX
+   numeric field contract support?
 2. Which Dataset workflows should consume MJUX first, and on what timeline?
 3. Does Dataset need interchangeability with Genux, and what shared host-facing
    behavior would that require?
