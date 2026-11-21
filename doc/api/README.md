@@ -1,9 +1,19 @@
-# Prototype API
+# MJUX API
 
-MJUX `0.1.0` exposes its supported types through `package:mjux/mjux.dart`.
+MJUX `0.2.0` exposes its supported types through `package:mjux/mjux.dart`.
 Use a local path dependency to evaluate the package with Flutter 3.50.0 or
 later. Flutter 3.50.0 bundles Dart 3.14.0. The example declares the dependency
 and runs a complete host app. [Example manifest](../../example/pubspec.yaml)
+
+## JUX workspaces and panels
+
+`DeskWorkspace` and `MobileWorkspace` render platform chrome around a host-supplied child. The host provides the active destination ID and handles destination selection. `AdaptiveWorkspace` uses one supplied `SurfaceDef`, a `ComposedViewModel`, and a registry of `PanelDef` objects to render a composed Surface.
+
+`buildCollectionPanel`, `buildInspectionPanel`, and `buildFormPanel` connect Material panels to JCore view models and host action callbacks. Use `PanelBuilderRegistry.register(int uixId, PanelBuilder builder)` to register a builder for a JCore UIX type. `registerDefaultBuilders()` registers the three standard panel builders.
+
+`StorageProfilesFixture.load()` loads and validates the bundled Workspace, Surface, Collection, Inspection, and Form definitions. It first tries Flutter's package asset path under `packages/mjux/example/fixtures/`, then the standalone path under `example/fixtures/`. `FixtureQueryService` works in memory and uses fixture operation IDs `2000` (list), `2001` (save), and `2002` (read). [Fixture implementation](../../lib/src/fixtures/storage_profiles_fixture.dart)
+
+## Form editor
 
 | Type | Use |
 | --- | --- |
