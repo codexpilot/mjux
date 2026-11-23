@@ -93,7 +93,7 @@ packages:
     description:
       path: dart
       ref: main
-      resolved-ref: "1ceccf54be69c40b73dd0f0d95462a4b29b2c851"
+      resolved-ref: "17bce4bd3ff7a0ea5ffb9696d9a7fa6af128a957"
       url: "https://github.com/codexpilot/jcore.git"
     source: git
     version: "4.4.0"
