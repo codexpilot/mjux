@@ -106,9 +106,13 @@ Widget buildCollectionPanel(
                           itemCount: records.length,
                           itemBuilder: (context, index) {
                             final record = records[index];
+                            // Find display name field: try 'n' (ModelX), then 'name',
+                            // or fall back to second field (first after ID)
                             final nameField = viewDef.fields.firstWhere(
-                              (f) => f.key == 'name',
-                              orElse: () => viewDef.fields.first,
+                              (f) => f.key == 'n' || f.key == 'name',
+                              orElse: () => viewDef.fields.length > 1
+                                  ? viewDef.fields[1]
+                                  : viewDef.fields.first,
                             );
 
                             return ListTile(
