@@ -1,6 +1,6 @@
 name: mjux
 description: Material app chrome and JSON-driven data workspaces for Flutter with JCore JUX integration.
-version: 0.2.0
+version: 0.2.1
 publish_to: none
 
 environment:

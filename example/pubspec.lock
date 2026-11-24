@@ -93,10 +93,10 @@ packages:
     description:
       path: dart
       ref: main
-      resolved-ref: "17bce4bd3ff7a0ea5ffb9696d9a7fa6af128a957"
+      resolved-ref: "714db412f14822a5419c805b5d13514c8d54e7f6"
       url: "https://github.com/codexpilot/jcore.git"
     source: git
-    version: "4.4.0"
+    version: "4.5.0"
   leak_tracker:
     dependency: transitive
     description:
