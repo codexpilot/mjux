@@ -5,8 +5,8 @@ import 'form_editor_1.dart';
 
 final _core = createMaterialCoreRegistry();
 
-final class FormEditorView extends StatelessWidget {
-  const FormEditorView({
+final class FormEditor1View extends StatelessWidget {
+  const FormEditor1View({
     super.key,
     required this.item,
     required this.values,

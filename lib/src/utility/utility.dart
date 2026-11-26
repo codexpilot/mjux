@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../catalog/form_editor_1.dart';
-import '../catalog/form_editor_view.dart';
+import '../catalog/form_editor_1_view.dart';
 
 /// Opens independent surfaces for supported Catalog items.
 final class Utility {
@@ -123,7 +123,7 @@ final class SurfaceView extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: surface._changes,
-      builder: (context, _) => FormEditorView(
+      builder: (context, _) => FormEditor1View(
         key: ObjectKey(surface),
         item: surface._item,
         values: surface._draft,
